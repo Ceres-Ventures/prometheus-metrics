@@ -1,4 +1,4 @@
-package pkg
+package validator
 
 import (
 	"encoding/json"
@@ -8,12 +8,11 @@ import (
 	"net/http"
 
 	"github.com/Entrio/subenv"
-	"github.com/ceres-ventures/prometheus-metrics/pkg/models"
 )
 
-func MakeRequest() (*models.ValidatorResponse, error) {
-	baseUrl := subenv.Env("LCD_URL", "")
-	validatorUrl := fmt.Sprintf("%s/%s", baseUrl, subenv.Env("VALIDATOR_ADDRESS", ""))
+func MakeRequest() (*ValidatorResponse, error) {
+	baseUrl := subenv.Env("LCD_URL", "http://188.40.140.51:1317")
+	validatorUrl := fmt.Sprintf("%s/cosmos/staking/v1beta1/validators/%s", baseUrl, subenv.Env("VALIDATOR_ADDRESS", "terravaloper1q8w4u2wyhx574m70gwe8km5za2ptanny9mnqy3"))
 	req, err := http.NewRequest("GET", validatorUrl, nil)
 	if err != nil {
 		//TODO: Count number of fails, block prometheus response
@@ -32,11 +31,11 @@ func MakeRequest() (*models.ValidatorResponse, error) {
 		return nil, errors.New("error reading response")
 	}
 
-	var vr models.ValidatorResponse
+	var vr ValidatorResponse
 
 	if err := json.Unmarshal(body, &vr); err != nil {
 		return nil, errors.New("failed to unmarshal response json")
 	}
 
-	return nil, nil
+	return &vr, nil
 }

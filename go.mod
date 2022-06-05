@@ -1,10 +1,13 @@
-module metrics
+module github.com/ceres-ventures/prometheus-metrics
 
 go 1.17
 
 require (
-	github.com/Entrio/subenv v0.0.0-20210211031353-9ddad865e314 // indirect
-	github.com/labstack/echo/v4 v4.7.2 // indirect
+	github.com/Entrio/subenv v0.0.0-20210211031353-9ddad865e314
+	github.com/labstack/echo/v4 v4.7.2
+)
+
+require (
 	github.com/labstack/gommon v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.11 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect

@@ -1,6 +1,10 @@
-package models
+package validator
 
-import "time"
+import (
+	"strconv"
+	"strings"
+	"time"
+)
 
 /*
 
@@ -40,6 +44,9 @@ import "time"
 
 type (
 	ValidatorResponse struct {
+		Validator Validator `json:"validator"`
+	}
+	Validator struct {
 		OperatorAddress   string               `json:"operator_address"`
 		Jailed            bool                 `json:"jailed"`
 		Status            string               `json:"status"`
@@ -60,5 +67,30 @@ type (
 		MaxRate       string `json:"max_rate"`
 		MaxChangeRate string `json:"max_change_rate"`
 	}
-	ValidatorDescription struct{}
+	ValidatorDescription struct {
+		Moniker         string `json:"moniker"`
+		Identity        string `json:"identity"`
+		Website         string `json:"website"`
+		SecurityContact string `json:"security_contact"`
+		Details         string `json:"details"`
+	}
 )
+
+func (v Validator) GetShares() string {
+	return strings.Split(v.DelegatorShares, ".")[0]
+}
+
+func (v Validator) GetUTokens() uint64 {
+	n, err := strconv.ParseUint(v.DelegatedAmount, 10, 64)
+	if err == nil {
+		return n
+	}
+	return 0
+}
+func (v Validator) GetTokens() float64 {
+	delegatedFloat, err := strconv.ParseFloat(v.DelegatedAmount, 64)
+	if err != nil {
+		return 0
+	}
+	return delegatedFloat / 1000000
+}
