@@ -24,6 +24,15 @@ type (
 			} `json:"commission"`
 		} `json:"commission"`
 	}
+
+	RewardsResponse struct {
+		Rewards struct {
+			Rewards []struct {
+				Denom  string `json:"denom"`
+				Amount string `json:"amount"`
+			} `json:"rewards"`
+		} `json:"rewards"`
+	}
 )
 
 func (d DistributionCommissionResponse) GetOutstandingCommission() float64 {
@@ -32,4 +41,12 @@ func (d DistributionCommissionResponse) GetOutstandingCommission() float64 {
 		return 0
 	}
 	return commFloat / 1000000
+}
+
+func (r RewardsResponse) GetOutstandingRewards() float64 {
+	rewardsFloat, err := strconv.ParseFloat(r.Rewards.Rewards[0].Amount, 64)
+	if err != nil {
+		return 0
+	}
+	return rewardsFloat / 1000000
 }
