@@ -3,20 +3,84 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Entrio/subenv"
+	"github.com/ceres-ventures/prometheus-metrics/pkg/blockchain"
+	"github.com/ceres-ventures/prometheus-metrics/pkg/job"
 	"github.com/ceres-ventures/prometheus-metrics/pkg/validator"
 	"github.com/labstack/echo/v4"
 )
 
+var (
+	metricStore *blockchain.MetricStore
+)
+
 func main() {
 	e := echo.New()
+
+	dis := job.CreateNewDispatcher()
+	metricStore = blockchain.NewMetricStore()
+
 	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
+		r, e := blockchain.GetLatestBlockData()
+		if e != nil {
+			return c.String(http.StatusInternalServerError, fmt.Sprintf("failed to query\n%s", e.Error()))
+		}
+		return c.JSON(http.StatusOK, r)
 	})
 
 	e.GET("/metrics", getMetrics)
+	latestBlocksJob := func() error {
+		r, e := blockchain.GetLatestBlockData()
+		if e != nil {
+			return e
+		}
 
+		metricStore.AddUpdate(blockchain.LatestBlockHeight, r.GetBlockHeightInt())
+		time.Sleep(time.Millisecond * 150)
+		metricStore.AddUpdate(blockchain.AverageTransactionsPerBlock, r.GetNumOfTxs())
+		time.Sleep(time.Second * 2)
+		return nil
+	}
+	dis.AddJob(latestBlocksJob, true, -1, 0)
+
+	supplyJob := func() error {
+		r, e := blockchain.GetLunaSupply()
+		if e != nil {
+			return e
+		}
+
+		metricStore.AddUpdate(blockchain.LunaSupply, r.GetLunaSupply())
+		time.Sleep(time.Second * 2)
+		return nil
+	}
+	dis.AddJob(supplyJob, true, -1, 0)
+
+	delegations := func() error {
+		val, err := validator.GetValidatorData()
+		if err != nil {
+			return err
+		}
+		valDistr, err := validator.QueryValidatorCommissions()
+		if err != nil {
+			return err
+		}
+		valRewards, err := validator.QueryValidatorRewards()
+		if err != nil {
+			return err
+		}
+
+		metricStore.AddUpdate(blockchain.ValidatorTokensAllocated, val.Validator.GetTokens())
+		metricStore.AddUpdate(blockchain.ValidatorOutstandingCommission, valDistr.GetOutstandingCommission())
+		metricStore.AddUpdate(blockchain.ValidatorOutstandingRewards, valRewards.GetOutstandingRewards())
+		time.Sleep(time.Second * 2)
+		return nil
+	}
+	dis.AddJob(delegations, true, -1, 0)
+
+	dis.Start(5)
+	metricStore.Start()
 	e.Logger.Fatal(
 		e.Start(
 			fmt.Sprintf(
@@ -29,29 +93,5 @@ func main() {
 }
 
 func getMetrics(c echo.Context) error {
-	val, err := validator.MakeRequest()
-	if err != nil {
-		return c.String(http.StatusInternalServerError, fmt.Sprintf("failed to query remote delegations stats\n%s", err.Error()))
-	}
-
-	valDistr, err := validator.QueryValidatorCommissions()
-	if err != nil {
-		return c.String(http.StatusInternalServerError, fmt.Sprintf("failed to query remote commission stats\n%s", err.Error()))
-	}
-
-	valRewards, err := validator.QueryValidatorRewards()
-	if err != nil {
-		return c.String(http.StatusInternalServerError, fmt.Sprintf("failed to query remote commission stats\n%s", err.Error()))
-	}
-
-	return c.String(
-		200,
-		fmt.Sprintf(
-			"# HELP validator_tokens_allocated The current validator delegations.\n# TYPE validator_tokens_allocated gauge\nvalidator_tokens_allocated %f\n"+
-				"# HELP validator_outstanding_commission Current outstanding commision\n# TYPE validator_outstanding_commission gauge\nvalidator_outstanding_commission %f\n"+
-				"# HELP validator_outstanding_rewards Current outstanding commision\n# TYPE validator_outstanding_rewards gauge\nvalidator_outstanding_rewards %f\n"+
-				"",
-			val.Validator.GetTokens(), valDistr.GetOutstandingCommission(), valRewards.GetOutstandingRewards(),
-		),
-	)
+	return c.String(200, metricStore.ToPrometheusString())
 }

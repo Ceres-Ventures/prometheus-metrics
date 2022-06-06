@@ -10,7 +10,7 @@ import (
 	"github.com/Entrio/subenv"
 )
 
-func MakeRequest() (*ValidatorResponse, error) {
+func GetValidatorData() (*ValidatorResponse, error) {
 	baseUrl := subenv.Env("LCD_URL", "http://188.40.140.51:1317")
 	validatorUrl := fmt.Sprintf("%s/cosmos/staking/v1beta1/validators/%s", baseUrl, subenv.Env("VALIDATOR_ADDRESS", "terravaloper1q8w4u2wyhx574m70gwe8km5za2ptanny9mnqy3"))
 	req, err := http.NewRequest("GET", validatorUrl, nil)
