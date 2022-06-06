@@ -1,6 +1,10 @@
 package blockchain
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/ceres-ventures/prometheus-metrics/pkg/external"
+)
 
 type UpdateType int64
 type UpdateField int64
@@ -12,6 +16,7 @@ const (
 	LatestBlockHeight
 	LunaSupply
 	AverageTransactionsPerBlock
+	LunaMarketData
 )
 
 const (
@@ -27,6 +32,7 @@ type (
 		LatestBlockHeight              int
 		LunaSupply                     float64
 		AverageTransactionsPerBlock    float64
+		MarketData                     external.CGPriceResponse
 	}
 
 	Request struct {
@@ -53,6 +59,16 @@ func (ms MetricStore) ToPrometheusString() string {
 			"# HELP luna_circulation_supply Current luna in circulation\n# TYPE luna_circulation_supply counter\nluna_circulation_supply %f\n"+
 			"# HELP avg_transaction_per_block Average number of transaction for last 10 blocks\n# TYPE avg_transaction_per_block gauge\navg_transaction_per_block %f\n"+
 			"# HELP transactions_last_block Transactions for last block\n# TYPE transactions_last_block gauge\ntransactions_last_block %d\n"+
+			"# HELP market_price Current market price\n# TYPE market_price gauge\nmarket_price{currency=\"aud\"} %f\n"+
+			"market_price{currency=\"usd\"} %f\n"+
+			"# HELP market_price_ath All time high price\n# TYPE market_price_ath gauge\nmarket_price_ath{currency=\"aud\"} %f\n"+
+			"market_price_ath{currency=\"usd\"} %f\n"+
+			"# HELP market_price_atl All time low price\n# TYPE market_price_atl gauge\nmarket_price_atl{currency=\"aud\"} %f\n"+
+			"market_price_atl{currency=\"usd\"} %f\n"+
+			"# HELP market_price_high24 All time low price\n# TYPE market_price_high24 gauge\nmarket_price_high24{currency=\"aud\"} %f\n"+
+			"market_price_high24{currency=\"usd\"} %f\n"+
+			"# HELP market_price_low24 All time low price\n# TYPE market_price_low24 gauge\nmarket_price_low24{currency=\"aud\"} %f\n"+
+			"market_price_low24{currency=\"usd\"} %f\n"+
 			"",
 		ms.Data.ValidatorTokensAllocated,
 		ms.Data.ValidatorOutstandingCommission,
@@ -61,6 +77,20 @@ func (ms MetricStore) ToPrometheusString() string {
 		ms.Data.LunaSupply,
 		ms.Data.AverageTransactionsPerBlock,
 		ms.cursor[1][ms.currentCursor],
+		ms.Data.MarketData.MarketData.CurrentPrice.AUD,
+		ms.Data.MarketData.MarketData.CurrentPrice.USD,
+
+		ms.Data.MarketData.MarketData.ATH.AUD,
+		ms.Data.MarketData.MarketData.ATH.USD,
+
+		ms.Data.MarketData.MarketData.ATL.AUD,
+		ms.Data.MarketData.MarketData.ATL.USD,
+
+		ms.Data.MarketData.MarketData.High24.AUD,
+		ms.Data.MarketData.MarketData.High24.USD,
+
+		ms.Data.MarketData.MarketData.Low24.AUD,
+		ms.Data.MarketData.MarketData.Low24.USD,
 	)
 }
 
@@ -157,6 +187,9 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 			}
 		}
 		ms.Data.AverageTransactionsPerBlock = float64(total) / 10
+	case LunaMarketData:
+		data := value.(*external.CGPriceResponse)
+		ms.Data.MarketData = *data
 	}
 }
 func (ms *MetricStore) processReset(field UpdateField) {

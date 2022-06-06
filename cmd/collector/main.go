@@ -7,6 +7,7 @@ import (
 
 	"github.com/Entrio/subenv"
 	"github.com/ceres-ventures/prometheus-metrics/pkg/blockchain"
+	"github.com/ceres-ventures/prometheus-metrics/pkg/external"
 	"github.com/ceres-ventures/prometheus-metrics/pkg/job"
 	"github.com/ceres-ventures/prometheus-metrics/pkg/validator"
 	"github.com/labstack/echo/v4"
@@ -56,6 +57,18 @@ func main() {
 		return nil
 	}
 	dis.AddJob(supplyJob, true, -1, 0)
+
+	marketJob := func() error {
+		r, e := external.GetLunaMarketData()
+		if e != nil {
+			return e
+		}
+
+		metricStore.AddUpdate(blockchain.LunaMarketData, r)
+		time.Sleep(time.Second * 20)
+		return nil
+	}
+	dis.AddJob(marketJob, true, -1, 0)
 
 	delegations := func() error {
 		val, err := validator.GetValidatorData()
