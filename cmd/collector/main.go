@@ -31,7 +31,19 @@ func main() {
 func getMetrics(c echo.Context) error {
 	val, err := validator.MakeRequest()
 	if err != nil {
-		return c.String(http.StatusInternalServerError, fmt.Sprintf("failed to query remote stats\n%s", err.Error()))
+		return c.String(http.StatusInternalServerError, fmt.Sprintf("failed to query remote delegations stats\n%s", err.Error()))
 	}
-	return c.String(200, fmt.Sprintf("# HELP validator_tokens_allocated The current validator delegations.\n# TYPE validator_tokens_allocated gauge\nvalidator_tokens_allocated %f", val.Validator.GetTokens()))
+
+	valDistr, err := validator.QueryValidatorCommissions()
+	if err != nil {
+		return c.String(http.StatusInternalServerError, fmt.Sprintf("failed to query remote commission stats\n%s", err.Error()))
+	}
+
+	return c.String(
+		200,
+		fmt.Sprintf(
+			"# HELP validator_tokens_allocated The current validator delegations.\n# TYPE validator_tokens_allocated gauge\nvalidator_tokens_allocated %f\n# HELP validator_outstanding_commission Current outstanding commision\n# TYPE validator_outstanding_commission gauge\nvalidator_outstanding_commission %f",
+			val.Validator.GetTokens(), valDistr.GetOutstandingCommission(),
+		),
+	)
 }
