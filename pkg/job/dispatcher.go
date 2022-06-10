@@ -1,7 +1,5 @@
 package job
 
-import "fmt"
-
 type (
 	Dispatcher struct {
 		jobCounter     uint64
@@ -40,7 +38,7 @@ func (d *Dispatcher) Start(numWorkers uint64) {
 			case job := <-d.jobQueue:
 				d.workQueue <- job
 			case ds := <-d.dispatchStatus:
-				fmt.Printf("Got a dispatch status:\n\tType[%s] - ID[%d] - Status[%s]\n", ds.Type, ds.ID, ds.Status)
+				//fmt.Printf("Got a dispatch status:\n\tType[%s] - ID[%d] - Status[%s]\n", ds.Type, ds.ID, ds.Status)
 				if ds.Type == "worker" {
 					if ds.Status == "quit" {
 						d.jobCounter--

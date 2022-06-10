@@ -17,6 +17,7 @@ const (
 	LunaSupply
 	AverageTransactionsPerBlock
 	LunaMarketData
+	BlockSign
 )
 
 const (
@@ -26,6 +27,7 @@ const (
 
 type (
 	MetricsData struct {
+		LastBlockHeight                int
 		ValidatorTokensAllocated       float64
 		ValidatorOutstandingCommission float64
 		ValidatorOutstandingRewards    float64
@@ -33,6 +35,9 @@ type (
 		LunaSupply                     float64
 		AverageTransactionsPerBlock    float64
 		MarketData                     external.CGPriceResponse
+		LastSignedCount                int64
+		LastBlocksSinceSigned          int64
+		LastSignedBlockHeight          int
 	}
 
 	Request struct {
@@ -69,6 +74,8 @@ func (ms MetricStore) ToPrometheusString() string {
 			"market_price_high24{currency=\"usd\"} %f\n"+
 			"# HELP market_price_low24 All time low price\n# TYPE market_price_low24 gauge\nmarket_price_low24{currency=\"aud\"} %f\n"+
 			"market_price_low24{currency=\"usd\"} %f\n"+
+			"# HELP block_since_sign How many blocks ago we signed a block\n# TYPE block_since_sign gauge\nblock_since_sign  %d\n"+
+			"# HELP last_signed_height What was the last block we signed\n# TYPE last_signed_height gauge\nlast_signed_height  %d\n"+
 			"",
 		ms.Data.ValidatorTokensAllocated,
 		ms.Data.ValidatorOutstandingCommission,
@@ -91,6 +98,9 @@ func (ms MetricStore) ToPrometheusString() string {
 
 		ms.Data.MarketData.MarketData.Low24.AUD,
 		ms.Data.MarketData.MarketData.Low24.USD,
+
+		ms.Data.LastSignedCount,
+		ms.Data.LastSignedBlockHeight,
 	)
 }
 
@@ -155,7 +165,9 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 	case ValidatorOutstandingRewards:
 		ms.Data.ValidatorOutstandingRewards = value.(float64)
 	case LatestBlockHeight:
-		height := value.(int)
+		bd := value.(*LatestBlockResponse)
+		height := bd.GetBlockHeightInt()
+
 		if ms.currentCursor == -1 {
 			ms.currentCursor = 0
 			ms.cursor[0][ms.currentCursor] = height // set block height
@@ -170,6 +182,21 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 				ms.cursor[0][ms.currentCursor] = height
 			}
 		}
+
+		if ms.Data.LastBlockHeight != height {
+			fmt.Println("New block: ", height)
+			if bd.Block.Header.Proposer == OwnValidatorHashAddress {
+				// We signed this block
+				ms.Data.LastSignedBlockHeight = height
+				ms.Data.LastSignedCount = ms.Data.LastBlocksSinceSigned
+				ms.Data.LastBlocksSinceSigned = 0
+			} else {
+				// we are not the block signer
+				fmt.Println(fmt.Sprintf("Proposer %s != %s. Havent signed for %d\n", bd.Block.Header.Proposer, OwnValidatorHashAddress, ms.Data.LastBlocksSinceSigned))
+				ms.Data.LastBlocksSinceSigned++
+			}
+		}
+		ms.Data.LastBlockHeight = height
 	case LunaSupply:
 		ms.Data.LunaSupply = value.(float64)
 	case AverageTransactionsPerBlock:
@@ -190,6 +217,8 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 	case LunaMarketData:
 		data := value.(*external.CGPriceResponse)
 		ms.Data.MarketData = *data
+	case BlockSign:
+
 	}
 }
 func (ms *MetricStore) processReset(field UpdateField) {

@@ -38,9 +38,9 @@ func main() {
 			return e
 		}
 
-		metricStore.AddUpdate(blockchain.LatestBlockHeight, r.GetBlockHeightInt())
-		time.Sleep(time.Millisecond * 150)
-		metricStore.AddUpdate(blockchain.AverageTransactionsPerBlock, r.GetNumOfTxs())
+		metricStore.AddUpdate(blockchain.LatestBlockHeight, r)
+		//time.Sleep(time.Millisecond * 150)
+		//metricStore.AddUpdate(blockchain.AverageTransactionsPerBlock, r.GetNumOfTxs())
 		time.Sleep(time.Second * 2)
 		return nil
 	}
