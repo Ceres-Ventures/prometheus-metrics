@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/ceres-ventures/prometheus-metrics/pkg/external"
 )
@@ -18,6 +19,8 @@ const (
 	AverageTransactionsPerBlock
 	LunaMarketData
 	BlockSign
+	Status
+	WalletBalances
 )
 
 const (
@@ -39,6 +42,11 @@ type (
 		LastSignedCount                int64
 		LastBlocksSinceSigned          int64
 		LastSignedBlockHeight          int
+		ValidatorVotingPower           float64
+		WalletData                     struct {
+			ID      string
+			Balance float64
+		}
 	}
 
 	Request struct {
@@ -79,6 +87,8 @@ func (ms MetricStore) ToPrometheusString() string {
 			"# HELP last_signed_height What was the last block we signed\n# TYPE last_signed_height gauge\nlast_signed_height  %d\n"+
 			"# HELP current_luna_worth How much commission is worth\n# TYPE current_luna_worth gauge\ncurrent_luna_worth{currency=\"usd\"}  %f\n"+
 			"# HELP current_luna_worth How much commission is worth\n# TYPE current_luna_worth gauge\ncurrent_luna_worth{currency=\"aud\"}  %f\n"+
+			"# HELP voting_power Voting power the validator has\n# TYPE voting_power gauge\nvoting_power %f\n"+
+			"# HELP wallet_balance Current wallet balance\n# TYPE wallet_balance gauge\nwallet_balance{wallet=\"%s\"} %f\n"+
 			"",
 
 		ms.Data.ValidatorTokensAllocated,
@@ -108,6 +118,10 @@ func (ms MetricStore) ToPrometheusString() string {
 		ms.Data.LastSignedBlockHeight,
 		ms.Data.ValidatorOutstandingCommission*ms.Data.MarketData.MarketData.CurrentPrice.USD,
 		ms.Data.ValidatorOutstandingCommission*ms.Data.MarketData.MarketData.CurrentPrice.AUD,
+
+		ms.Data.ValidatorVotingPower,
+		ms.Data.WalletData.ID,
+		ms.Data.WalletData.Balance,
 	)
 }
 
@@ -238,7 +252,15 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 		data := value.(*external.CGPriceResponse)
 		ms.Data.MarketData = *data
 	case BlockSign:
-
+	case Status:
+		res := value.(*StatusResponse)
+		f, _ := strconv.ParseFloat(res.Result.ValidatorInfo.VotingPower, 64)
+		ms.Data.ValidatorVotingPower = f / 1000000
+	case WalletBalances:
+		res := value.(*BalanceResponse)
+		bal, _ := strconv.ParseFloat(res.Balances[0].Amount, 64)
+		ms.Data.WalletData.Balance = bal
+		ms.Data.WalletData.ID = res.WalletAddress
 	}
 }
 func (ms *MetricStore) processReset(field UpdateField) {

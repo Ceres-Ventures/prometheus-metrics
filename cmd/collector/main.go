@@ -28,8 +28,15 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-
 	metricStore.AddUpdate(blockchain.LatestBlockHeight, r)
+
+	/*
+		s, err := blockchain.GetStatus()
+		if err != nil {
+			panic(err.Error())
+		}
+		metricStore.AddUpdate(blockchain.Status, s)
+	*/
 
 	e.GET("/", func(c echo.Context) error {
 		r, e := blockchain.GetLatestBlockData()
@@ -47,8 +54,21 @@ func main() {
 		}
 
 		metricStore.AddUpdate(blockchain.LatestBlockHeight, r)
-		//time.Sleep(time.Millisecond * 150)
-		//metricStore.AddUpdate(blockchain.AverageTransactionsPerBlock, r.GetNumOfTxs())
+
+		b, e := blockchain.GetBalances()
+		if e != nil {
+			return e
+		}
+		metricStore.AddUpdate(blockchain.WalletBalances, b)
+
+		/*
+			s, err := blockchain.GetStatus()
+			if err != nil {
+				panic(err.Error())
+			}
+			metricStore.AddUpdate(blockchain.Status, s)
+		*/
+
 		time.Sleep(time.Second * 2)
 		return nil
 	}
