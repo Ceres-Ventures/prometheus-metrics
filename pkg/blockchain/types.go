@@ -27,6 +27,7 @@ const (
 
 type (
 	MetricsData struct {
+		ChainID                        string
 		LastBlockHeight                int
 		ValidatorTokensAllocated       float64
 		ValidatorOutstandingCommission float64
@@ -60,7 +61,7 @@ func (ms MetricStore) ToPrometheusString() string {
 		"# HELP validator_tokens_allocated The current validator delegations.\n# TYPE validator_tokens_allocated gauge\nvalidator_tokens_allocated %f\n"+
 			"# HELP validator_outstanding_commission Current outstanding commision\n# TYPE validator_outstanding_commission gauge\nvalidator_outstanding_commission %f\n"+
 			"# HELP validator_outstanding_rewards Current outstanding commision\n# TYPE validator_outstanding_rewards gauge\nvalidator_outstanding_rewards %f\n"+
-			"# HELP latest_block_height Most recent block\n# TYPE latest_block_height gauge\nlatest_block_height %d\n"+
+			"# HELP latest_block_height Most recent block\n# TYPE latest_block_height gauge\nlatest_block_height{chain_id=\"%s\"} %d\n"+
 			"# HELP luna_circulation_supply Current luna in circulation\n# TYPE luna_circulation_supply counter\nluna_circulation_supply %f\n"+
 			"# HELP avg_transaction_per_block Average number of transaction for last 10 blocks\n# TYPE avg_transaction_per_block gauge\navg_transaction_per_block %f\n"+
 			"# HELP transactions_last_block Transactions for last block\n# TYPE transactions_last_block gauge\ntransactions_last_block %d\n"+
@@ -76,10 +77,14 @@ func (ms MetricStore) ToPrometheusString() string {
 			"market_price_low24{currency=\"usd\"} %f\n"+
 			"# HELP block_since_sign How many blocks ago we signed a block\n# TYPE block_since_sign gauge\nblock_since_sign  %d\n"+
 			"# HELP last_signed_height What was the last block we signed\n# TYPE last_signed_height gauge\nlast_signed_height  %d\n"+
+			"# HELP current_luna_worth How much commission is worth\n# TYPE current_luna_worth gauge\ncurrent_luna_worth{currency=\"usd\"}  %f\n"+
+			"# HELP current_luna_worth How much commission is worth\n# TYPE current_luna_worth gauge\ncurrent_luna_worth{currency=\"aud\"}  %f\n"+
 			"",
+
 		ms.Data.ValidatorTokensAllocated,
 		ms.Data.ValidatorOutstandingCommission,
 		ms.Data.ValidatorOutstandingRewards,
+		ms.Data.ChainID,
 		ms.cursor[0][ms.currentCursor],
 		ms.Data.LunaSupply,
 		ms.Data.AverageTransactionsPerBlock,
@@ -101,6 +106,8 @@ func (ms MetricStore) ToPrometheusString() string {
 
 		ms.Data.LastSignedCount,
 		ms.Data.LastSignedBlockHeight,
+		ms.Data.ValidatorOutstandingCommission*ms.Data.MarketData.MarketData.CurrentPrice.USD,
+		ms.Data.ValidatorOutstandingCommission*ms.Data.MarketData.MarketData.CurrentPrice.AUD,
 	)
 }
 
@@ -167,6 +174,7 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 	case LatestBlockHeight:
 		bd := value.(*LatestBlockResponse)
 		height := bd.GetBlockHeightInt()
+		ms.Data.ChainID = bd.Block.Header.Chain
 
 		if ms.currentCursor == -1 {
 			ms.currentCursor = 0
@@ -182,6 +190,18 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 				ms.cursor[0][ms.currentCursor] = height
 			}
 		}
+
+		txs := bd.GetNumOfTxs()
+		ms.cursor[1][ms.currentCursor] = txs
+
+		// need to recalculate running average
+		total := 0
+		for i := 0; i < 10; i++ {
+			if ms.cursor[1][i] > 0 {
+				total += ms.cursor[1][i]
+			}
+		}
+		ms.Data.AverageTransactionsPerBlock = float64(total) / 10
 
 		if ms.Data.LastBlockHeight != height {
 			fmt.Println("New block: ", height)

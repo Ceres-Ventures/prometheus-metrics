@@ -22,6 +22,14 @@ func main() {
 
 	dis := job.CreateNewDispatcher()
 	metricStore = blockchain.NewMetricStore()
+	metricStore.Start()
+
+	r, err := blockchain.GetLatestBlockData()
+	if err != nil {
+		panic(err.Error())
+	}
+
+	metricStore.AddUpdate(blockchain.LatestBlockHeight, r)
 
 	e.GET("/", func(c echo.Context) error {
 		r, e := blockchain.GetLatestBlockData()
@@ -93,7 +101,7 @@ func main() {
 	dis.AddJob(delegations, true, -1, 0)
 
 	dis.Start(5)
-	metricStore.Start()
+
 	e.Logger.Fatal(
 		e.Start(
 			fmt.Sprintf(

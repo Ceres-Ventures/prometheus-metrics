@@ -25,6 +25,7 @@ type (
 				Height   string    `json:"height"`
 				Time     time.Time `json:"time"`
 				Proposer string    `json:"proposer_address"`
+				Chain    string    `json:"chain_id"`
 			} `json:"header"`
 			Data struct {
 				Transactions []string `json:"txs"`
@@ -62,7 +63,6 @@ func GetLatestBlockData() (*LatestBlockResponse, error) {
 		return nil, fmt.Errorf("[%s] failed to execute request", op)
 	}
 	defer res.Body.Close()
-
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("[%s] error reading response", op)
