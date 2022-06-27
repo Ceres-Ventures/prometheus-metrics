@@ -259,7 +259,7 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 	case WalletBalances:
 		res := value.(*BalanceResponse)
 		bal, _ := strconv.ParseFloat(res.Balances[0].Amount, 64)
-		ms.Data.WalletData.Balance = bal
+		ms.Data.WalletData.Balance = bal / 1000000
 		ms.Data.WalletData.ID = res.WalletAddress
 	}
 }
