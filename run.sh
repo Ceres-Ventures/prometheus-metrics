@@ -1,0 +1,2 @@
+#! /bin/bash
+DENOM_NAME="ukuji" MARKET_URL="https://api.coingecko.com/api/v3/coins/kujira?tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false" LCD_URL="https://lcd.kaiyo.kujira.setten.io:443" VALIDATOR_ADDRESS="kujiravaloper1te24ywf00f349thn46nnn4vpw0dl5z2vt6mc5p" VALIDATOR_KEY_ADDRESS="2F2C43150726C079CE6BE7CA9B088186A9C10832" WALLET_ADDRESSES="kujira1te24ywf00f349thn46nnn4vpw0dl5z2vv0gtgw" go run cmd/collector/main.go

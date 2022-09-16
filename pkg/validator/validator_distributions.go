@@ -1,6 +1,10 @@
 package validator
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/Entrio/subenv"
+)
 
 /*
 {
@@ -36,17 +40,34 @@ type (
 )
 
 func (d DistributionCommissionResponse) GetOutstandingCommission() float64 {
-	commFloat, err := strconv.ParseFloat(d.Commission.Commission[0].Amount, 64)
-	if err != nil {
-		return 0
+	denom := subenv.Env("DENOM_NAME", "uluna")
+	for i := range d.Commission.Commission {
+		if d.Commission.Commission[i].Denom != denom {
+			continue
+		}
+		commFloat, err := strconv.ParseFloat(d.Commission.Commission[i].Amount, 64)
+		if err != nil {
+			return 0
+		}
+		return commFloat / 1000000
 	}
-	return commFloat / 1000000
+
+	return 0
 }
 
 func (r RewardsResponse) GetOutstandingRewards() float64 {
-	rewardsFloat, err := strconv.ParseFloat(r.Rewards.Rewards[0].Amount, 64)
-	if err != nil {
-		return 0
+	denom := subenv.Env("DENOM_NAME", "uluna")
+	for i := range r.Rewards.Rewards {
+		if denom != r.Rewards.Rewards[i].Denom {
+			continue
+		}
+		rewardsFloat, err := strconv.ParseFloat(r.Rewards.Rewards[i].Amount, 64)
+		if err != nil {
+			return 0
+		}
+		return rewardsFloat / 1000000
 	}
-	return rewardsFloat / 1000000
+
+	return 0
+
 }
