@@ -23,7 +23,7 @@ func (bsr *BankSupplyResponse) GetULunaSupply() float64 {
 	supply := float64(0)
 
 	for _, v := range bsr.Supply {
-		if v.Denom == "uluna" {
+		if v.Denom == subenv.Env("DENOM_NAME", "uluna") {
 			val, e := strconv.ParseFloat(v.Amount, 64)
 			if e == nil {
 				supply = val
