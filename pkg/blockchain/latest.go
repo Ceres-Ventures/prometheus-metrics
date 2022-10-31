@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -51,7 +52,9 @@ func GetLatestBlockData() (*LatestBlockResponse, error) {
 	const op = "GetLatestBlockData"
 	baseUrl := subenv.Env("LCD_URL", "http://188.40.140.51:1317")
 	validatorUrl := fmt.Sprintf("%s/blocks/latest", baseUrl)
-	req, err := http.NewRequest("GET", validatorUrl, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", validatorUrl, nil)
 	if err != nil {
 		//TODO: Count number of fails, block prometheus response
 		return nil, fmt.Errorf("[%s] failed to create request", op)

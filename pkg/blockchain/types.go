@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"strconv"
 
 	"github.com/ceres-ventures/prometheus-metrics/pkg/external"
@@ -218,15 +219,16 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 		ms.Data.AverageTransactionsPerBlock = float64(total) / 10
 
 		if ms.Data.LastBlockHeight != height {
-			fmt.Println("New block: ", height)
+			logrus.Infof("New Block: %d", height)
 			if bd.Block.Header.Proposer == OwnValidatorHashAddress {
 				// We signed this block
 				ms.Data.LastSignedBlockHeight = height
 				ms.Data.LastSignedCount = ms.Data.LastBlocksSinceSigned
 				ms.Data.LastBlocksSinceSigned = 0
+				logrus.Infof("Block %d signed!", height)
 			} else {
 				// we are not the block signer
-				fmt.Println(fmt.Sprintf("Proposer %s != %s. Havent signed for %d\n", bd.Block.Header.Proposer, OwnValidatorHashAddress, ms.Data.LastBlocksSinceSigned))
+				logrus.Debugf("Proposer %s != %s. Havent signed for %d\n", bd.Block.Header.Proposer, OwnValidatorHashAddress, ms.Data.LastBlocksSinceSigned)
 				ms.Data.LastBlocksSinceSigned++
 			}
 		}
@@ -258,9 +260,17 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 		ms.Data.ValidatorVotingPower = f / 1000000
 	case WalletBalances:
 		res := value.(*BalanceResponse)
+		ms.Data.WalletData.ID = res.WalletAddress
+
+		if len(res.Balances) == 0 {
+			// Could do some more cleanup but most likely answer is that the balance of this denom is 0
+			ms.Data.WalletData.Balance = 0
+			ms.Data.WalletData.ID = res.WalletAddress
+			return
+		}
+
 		bal, _ := strconv.ParseFloat(res.Balances[0].Amount, 64)
 		ms.Data.WalletData.Balance = bal / 1000000
-		ms.Data.WalletData.ID = res.WalletAddress
 	}
 }
 func (ms *MetricStore) processReset(field UpdateField) {

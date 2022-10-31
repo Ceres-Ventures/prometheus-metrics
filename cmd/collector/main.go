@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -18,7 +19,14 @@ var (
 )
 
 func main() {
+	lvl, err := log.ParseLevel(subenv.Env("LOG_LEVEL", "info"))
+	if err != nil {
+		log.Warn("failed to parse log level, reverting to ino")
+		lvl = log.InfoLevel
+	}
+	log.SetLevel(lvl)
 	e := echo.New()
+	e.HideBanner = true
 
 	dis := job.CreateNewDispatcher()
 	metricStore = blockchain.NewMetricStore()
@@ -121,6 +129,15 @@ func main() {
 	dis.AddJob(delegations, true, -1, 0)
 
 	dis.Start(5)
+
+	log.WithFields(
+		log.Fields{
+			"port": subenv.EnvI("BIND_PORT", 9292),
+			"ip":   subenv.Env("BIND_IP", "0.0.0.0"),
+			"LCD":  subenv.Env("LCD_URL", "http://188.40.140.51:1317"),
+			"HASH": subenv.Env("VALIDATOR_KEY_ADDRESS", "C24A7D204E0A07736EAF8A7E76820CD868565B0E"),
+		},
+	).Info("Starting metrics server")
 
 	e.Logger.Fatal(
 		e.Start(
