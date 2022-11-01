@@ -1,47 +1,22 @@
-############################
-# STEP 1 build executable binary
-############################
 FROM golang:alpine AS builder
-# Install git.
-# Git is required for fetching the dependencies.
 RUN apk update && apk add --no-cache git ca-certificates tzdata && update-ca-certificates
-# Create appuser.
-ENV USER=appuser
-ENV UID=10001
-# See https://stackoverflow.com/a/55757473/12429735RUN
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    "${USER}"
 WORKDIR $GOPATH/src/github.com/ceres-ventures/prometheus-metrics/
 COPY . .
-# Fetch dependencies.
-# Using go get.
 RUN go mod download
-# Using go mod.
-# RUN go mod download
-# RUN go mod verify
-# Build the binary.
 RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/metrics cmd/collector/main.go
+RUN ls -lah /go/bin/metrics
 
-############################
-# STEP 2 build a small image
-############################
-FROM scratch
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-# Import the user and group files from the builder.
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
-# Copy our static executable.
-COPY --from=builder /go/bin/metrics /go/bin/metrics
-# Use an unprivileged user.
-USER appuser:appuser
+FROM --platform=linux/x86_64 alpine:3.15.4
+RUN apk add --no-cache bash nano
+RUN addgroup metrics && adduser -G metrics -D -h /metrics metrics
+WORKDIR /metrics
+COPY --from=builder /go/bin/metrics /usr/local/bin/metrics
+COPY --from=builder /usr/share/zoneinfo/Asia/Almaty /etc/localtime
+RUN echo "Asia/Almaty" >  /etc/timezone
+COPY --from=builder --chown=metrics:metrics /go/bin/metrics /go/bin/metrics
+USER metrics:metrics
 ENV BIND_IP=0.0.0.0
 ENV BIND_PORT=9292
 # Run the hello binary.
-ENTRYPOINT ["/go/bin/metrics"]
+RUN ls -lah /usr/local/bin/metrics
+CMD ["metrics"]
