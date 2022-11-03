@@ -102,7 +102,7 @@ func main() {
 		}
 
 		metricStore.AddUpdate(blockchain.LunaMarketData, r)
-		time.Sleep(time.Second * 3)
+		time.Sleep(time.Second * 30)
 		return nil
 	}
 	dis.AddJob(marketJob, true, -1, 0)
