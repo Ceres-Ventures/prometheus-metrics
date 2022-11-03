@@ -2,8 +2,9 @@ package blockchain
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"strconv"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/ceres-ventures/prometheus-metrics/pkg/external"
 )
@@ -251,6 +252,9 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 		}
 		ms.Data.AverageTransactionsPerBlock = float64(total) / 10
 	case LunaMarketData:
+		if value == nil {
+			return
+		}
 		data := value.(*external.CGPriceResponse)
 		ms.Data.MarketData = *data
 	case BlockSign:
