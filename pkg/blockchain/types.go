@@ -257,6 +257,7 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 		}
 		data := value.(*external.CGPriceResponse)
 		ms.Data.MarketData = *data
+		fmt.Println(ms.Data.MarketData)
 	case BlockSign:
 	case Status:
 		res := value.(*StatusResponse)
