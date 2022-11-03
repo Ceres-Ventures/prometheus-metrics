@@ -252,10 +252,12 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 		}
 		ms.Data.AverageTransactionsPerBlock = float64(total) / 10
 	case LunaMarketData:
-		if value == nil {
+		data := value.(*external.CGPriceResponse)
+		if data == nil {
+			logrus.Warn("Market data had no error but got a nil value. Most likely roo many requests!")
+			logrus.Info(ms.Data.MarketData)
 			return
 		}
-		data := value.(*external.CGPriceResponse)
 		ms.Data.MarketData = *data
 		fmt.Println(ms.Data.MarketData)
 	case BlockSign:

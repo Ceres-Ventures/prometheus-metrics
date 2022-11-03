@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/Entrio/subenv"
+	"github.com/sirupsen/logrus"
 )
 
 type (
@@ -64,5 +65,9 @@ func GetLunaMarketData() (*CGPriceResponse, error) {
 		return nil, fmt.Errorf("[%s] failed to unmarshal response json", op)
 	}
 
+	logrus.Infof("Requesto to %s was a success", baseUrl)
+	if res.StatusCode == 429 {
+		return nil, nil
+	}
 	return &r, nil
 }
