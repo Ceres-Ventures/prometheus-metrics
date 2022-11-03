@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/Entrio/subenv"
 	"github.com/ceres-ventures/prometheus-metrics/pkg/blockchain"
@@ -101,7 +102,7 @@ func main() {
 		}
 
 		metricStore.AddUpdate(blockchain.LunaMarketData, r)
-		time.Sleep(time.Second * 20)
+		time.Sleep(time.Second * 3)
 		return nil
 	}
 	dis.AddJob(marketJob, true, -1, 0)
