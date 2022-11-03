@@ -66,7 +66,7 @@ func GetLunaMarketData() (*CGPriceResponse, error) {
 	}
 
 	logrus.Infof("Requesto to %s was a success", baseUrl)
-	if res.StatusCode == 429 {
+	if res.StatusCode == 429 || r.MarketData.CurrentPrice.USD == 0 {
 		return nil, nil
 	}
 	return &r, nil
