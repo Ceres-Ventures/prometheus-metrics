@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -50,10 +51,12 @@ func (lbr LatestBlockResponse) GetBlockHeightInt() int {
 
 func GetLatestBlockData() (*LatestBlockResponse, error) {
 	const op = "GetLatestBlockData"
+	log.Debug(op)
 	baseUrl := subenv.Env("LCD_URL", "http://188.40.140.51:1317")
-	validatorUrl := fmt.Sprintf("%s/blocks/latest", baseUrl)
+	validatorUrl := fmt.Sprintf("%s/cosmos/base/tendermint/v1beta1/blocks/latest", baseUrl)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
+	log.Debugf("Fetching %s", validatorUrl)
 	req, err := http.NewRequestWithContext(ctx, "GET", validatorUrl, nil)
 	if err != nil {
 		//TODO: Count number of fails, block prometheus response
@@ -65,6 +68,9 @@ func GetLatestBlockData() (*LatestBlockResponse, error) {
 		//TODO: Same as above. Halting metric collection
 		return nil, fmt.Errorf("[%s] failed to execute request", op)
 	}
+
+	log.Debugf("Status code: %d", res.StatusCode)
+
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -76,6 +82,7 @@ func GetLatestBlockData() (*LatestBlockResponse, error) {
 	if err := json.Unmarshal(body, &r); err != nil {
 		return nil, fmt.Errorf("[%s] failed to unmarshal response json", op)
 	}
-
+	log.Debugf("LAtest block %d", r.GetBlockHeightInt())
+	log.Debugf("returning from %s", op)
 	return &r, nil
 }
