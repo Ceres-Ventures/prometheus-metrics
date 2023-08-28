@@ -12,7 +12,7 @@ import (
 
 func QueryValidatorCommissions() (*DistributionCommissionResponse, error) {
 	baseUrl := subenv.Env("LCD_URL", "http://188.40.140.51:1317")
-	validatorUrl := fmt.Sprintf("%s/cosmos/distribution/v1beta1/validators/%s/commission", baseUrl, subenv.Env("VALIDATOR_ADDRESS", "terravaloper1q8w4u2wyhx574m70gwe8km5za2ptanny9mnqy3"))
+	validatorUrl := fmt.Sprintf("%s/cosmos/distribution/v1beta1/validators/%s/commission", baseUrl, subenv.Env("VALIDATOR_ADDRESSES", "terravaloper1q8w4u2wyhx574m70gwe8km5za2ptanny9mnqy3"))
 	req, err := http.NewRequest("GET", validatorUrl, nil)
 	if err != nil {
 		//TODO: Count number of fails, block prometheus response
@@ -43,7 +43,7 @@ func QueryValidatorCommissions() (*DistributionCommissionResponse, error) {
 func QueryValidatorRewards() (*RewardsResponse, error) {
 	const op = "QueryValidatorRewards"
 	baseUrl := subenv.Env("LCD_URL", "http://188.40.140.51:1317")
-	validatorUrl := fmt.Sprintf("%s/cosmos/distribution/v1beta1/validators/%s/outstanding_rewards", baseUrl, subenv.Env("VALIDATOR_ADDRESS", "terravaloper1q8w4u2wyhx574m70gwe8km5za2ptanny9mnqy3"))
+	validatorUrl := fmt.Sprintf("%s/cosmos/distribution/v1beta1/validators/%s/outstanding_rewards", baseUrl, subenv.Env("VALIDATOR_ADDRESSES", "terravaloper1q8w4u2wyhx574m70gwe8km5za2ptanny9mnqy3"))
 	req, err := http.NewRequest("GET", validatorUrl, nil)
 	if err != nil {
 		//TODO: Count number of fails, block prometheus response

@@ -3,6 +3,7 @@ package blockchain
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -32,23 +33,33 @@ const (
 
 type (
 	MetricsData struct {
-		ChainID                        string
-		LastBlockHeight                int
-		ValidatorTokensAllocated       float64
-		ValidatorOutstandingCommission float64
-		ValidatorOutstandingRewards    float64
-		LatestBlockHeight              int
-		LunaSupply                     float64
-		AverageTransactionsPerBlock    float64
-		MarketData                     external.CGPriceResponse
-		LastSignedCount                int64
-		LastBlocksSinceSigned          int64
-		LastSignedBlockHeight          int
-		ValidatorVotingPower           float64
-		WalletData                     struct {
-			ID      string
-			Balance float64
-		}
+		ChainID                     string
+		LastBlockHeight             int
+		LatestBlockHeight           int
+		LunaSupply                  float64
+		AverageTransactionsPerBlock float64
+		MarketData                  external.CGPriceResponse
+		LastSignedCount             int64
+		LastBlocksSinceSigned       int64
+		LastSignedBlockHeight       int
+		WalletData                  []WalletData
+		ValidatorData               []ValidatorData
+	}
+
+	WalletData struct {
+		Address string
+		ID      string
+		Balance float64
+	}
+
+	ValidatorData struct {
+		AccountAddress        string  `json:"account_address"`
+		HexAddress            string  `json:"hex_address"`
+		OperatorAddress       string  `json:"operator_address"`
+		DelegationAmount      float64 `json:"delegation_amount"`
+		CommissionOutstanding float64 `json:"commission_outstanding"`
+		RewardsOutstanding    float64 `json:"rewards_outstanding"`
+		VotingPower           float64 `json:"voting_power"`
 	}
 
 	Request struct {
@@ -67,64 +78,80 @@ type (
 )
 
 func (ms MetricStore) ToPrometheusString() string {
-	return fmt.Sprintf(
-		"# HELP validator_tokens_allocated The current validator delegations.\n# TYPE validator_tokens_allocated gauge\nvalidator_tokens_allocated %f\n"+
-			"# HELP validator_outstanding_commission Current outstanding commision\n# TYPE validator_outstanding_commission gauge\nvalidator_outstanding_commission %f\n"+
-			"# HELP validator_outstanding_rewards Current outstanding commision\n# TYPE validator_outstanding_rewards gauge\nvalidator_outstanding_rewards %f\n"+
-			"# HELP latest_block_height Most recent block\n# TYPE latest_block_height gauge\nlatest_block_height{chain_id=\"%s\"} %d\n"+
-			"# HELP luna_circulation_supply Current luna in circulation\n# TYPE luna_circulation_supply counter\nluna_circulation_supply %f\n"+
-			"# HELP avg_transaction_per_block Average number of transaction for last 10 blocks\n# TYPE avg_transaction_per_block gauge\navg_transaction_per_block %f\n"+
-			"# HELP transactions_last_block Transactions for last block\n# TYPE transactions_last_block gauge\ntransactions_last_block %d\n"+
-			"# HELP market_price Current market price\n# TYPE market_price gauge\nmarket_price{currency=\"aud\"} %f\n"+
-			"market_price{currency=\"usd\"} %f\n"+
-			"# HELP market_price_ath All time high price\n# TYPE market_price_ath gauge\nmarket_price_ath{currency=\"aud\"} %f\n"+
-			"market_price_ath{currency=\"usd\"} %f\n"+
-			"# HELP market_price_atl All time low price\n# TYPE market_price_atl gauge\nmarket_price_atl{currency=\"aud\"} %f\n"+
-			"market_price_atl{currency=\"usd\"} %f\n"+
-			"# HELP market_price_high24 All time low price\n# TYPE market_price_high24 gauge\nmarket_price_high24{currency=\"aud\"} %f\n"+
-			"market_price_high24{currency=\"usd\"} %f\n"+
-			"# HELP market_price_low24 All time low price\n# TYPE market_price_low24 gauge\nmarket_price_low24{currency=\"aud\"} %f\n"+
-			"market_price_low24{currency=\"usd\"} %f\n"+
-			"# HELP block_since_sign How many blocks ago we signed a block\n# TYPE block_since_sign gauge\nblock_since_sign  %d\n"+
-			"# HELP last_signed_height What was the last block we signed\n# TYPE last_signed_height gauge\nlast_signed_height  %d\n"+
-			"# HELP current_luna_worth How much commission is worth\n# TYPE current_luna_worth gauge\ncurrent_luna_worth{currency=\"usd\"}  %f\n"+
-			"# HELP current_luna_worth How much commission is worth\n# TYPE current_luna_worth gauge\ncurrent_luna_worth{currency=\"aud\"}  %f\n"+
-			"# HELP voting_power Voting power the validator has\n# TYPE voting_power gauge\nvoting_power %f\n"+
-			"# HELP wallet_balance Current wallet balance\n# TYPE wallet_balance gauge\nwallet_balance{wallet=\"%s\"} %f\n"+
-			"",
+	stats, market := strings.Builder{}, strings.Builder{}
 
-		ms.Data.ValidatorTokensAllocated,
-		ms.Data.ValidatorOutstandingCommission,
-		ms.Data.ValidatorOutstandingRewards,
-		ms.Data.ChainID,
-		ms.cursor[0][ms.currentCursor],
-		ms.Data.LunaSupply,
-		ms.Data.AverageTransactionsPerBlock,
-		ms.cursor[1][ms.currentCursor],
-		ms.Data.MarketData.MarketData.CurrentPrice.AUD,
-		ms.Data.MarketData.MarketData.CurrentPrice.USD,
-
-		ms.Data.MarketData.MarketData.ATH.AUD,
-		ms.Data.MarketData.MarketData.ATH.USD,
-
-		ms.Data.MarketData.MarketData.ATL.AUD,
-		ms.Data.MarketData.MarketData.ATL.USD,
-
-		ms.Data.MarketData.MarketData.High24.AUD,
-		ms.Data.MarketData.MarketData.High24.USD,
-
-		ms.Data.MarketData.MarketData.Low24.AUD,
-		ms.Data.MarketData.MarketData.Low24.USD,
-
-		ms.Data.LastSignedCount,
-		ms.Data.LastSignedBlockHeight,
-		ms.Data.ValidatorOutstandingCommission*ms.Data.MarketData.MarketData.CurrentPrice.USD,
-		ms.Data.ValidatorOutstandingCommission*ms.Data.MarketData.MarketData.CurrentPrice.AUD,
-
-		ms.Data.ValidatorVotingPower,
-		ms.Data.WalletData.ID,
-		ms.Data.WalletData.Balance,
+	market.WriteString(
+		fmt.Sprintf(
+			"# TYPE luna_circulation_supply counter\nluna_circulation_supply %f\n"+
+				"# TYPE market_price gauge\nmarket_price{currency=\"usd\"} %f\n"+
+				"# TYPE market_price_ath gauge\nmarket_price_ath{currency=\"usd\"} %f\n"+
+				"# TYPE market_price_atl gauge\nmarket_price_atl{currency=\"usd\"} %f\n",
+			ms.Data.LunaSupply,
+			ms.Data.MarketData.MarketData.CurrentPrice.USD,
+			ms.Data.MarketData.MarketData.ATH.USD,
+			ms.Data.MarketData.MarketData.ATL.USD,
+		),
 	)
+
+	stats.WriteString(
+		fmt.Sprintf(
+			"# HELP validator_tokens_allocated The current validator delegations.\n# TYPE validator_tokens_allocated gauge\nvalidator_tokens_allocated %f\n"+
+				"# HELP validator_outstanding_commission Current outstanding commision\n# TYPE validator_outstanding_commission gauge\nvalidator_outstanding_commission %f\n"+
+				"# HELP validator_outstanding_rewards Current outstanding commision\n# TYPE validator_outstanding_rewards gauge\nvalidator_outstanding_rewards %f\n"+
+				"# HELP latest_block_height Most recent block\n# TYPE latest_block_height gauge\nlatest_block_height{chain_id=\"%s\"} %d\n"+
+				"# HELP avg_transaction_per_block Average number of transaction for last 10 blocks\n# TYPE avg_transaction_per_block gauge\navg_transaction_per_block %f\n"+
+				"# HELP transactions_last_block Transactions for last block\n# TYPE transactions_last_block gauge\ntransactions_last_block %d\n"+
+				"market_price{currency=\"usd\"} %f\n"+
+				"# HELP market_price_ath All time high price\n# TYPE market_price_ath gauge\nmarket_price_ath{currency=\"aud\"} %f\n"+
+				"market_price_ath{currency=\"usd\"} %f\n"+
+				"# HELP market_price_atl All time low price\n# TYPE market_price_atl gauge\nmarket_price_atl{currency=\"aud\"} %f\n"+
+				"market_price_atl{currency=\"usd\"} %f\n"+
+				"# HELP market_price_high24 All time low price\n# TYPE market_price_high24 gauge\nmarket_price_high24{currency=\"aud\"} %f\n"+
+				"market_price_high24{currency=\"usd\"} %f\n"+
+				"# HELP market_price_low24 All time low price\n# TYPE market_price_low24 gauge\nmarket_price_low24{currency=\"aud\"} %f\n"+
+				"market_price_low24{currency=\"usd\"} %f\n"+
+				"# HELP block_since_sign How many blocks ago we signed a block\n# TYPE block_since_sign gauge\nblock_since_sign  %d\n"+
+				"# HELP last_signed_height What was the last block we signed\n# TYPE last_signed_height gauge\nlast_signed_height  %d\n"+
+				"# HELP current_luna_worth How much commission is worth\n# TYPE current_luna_worth gauge\ncurrent_luna_worth{currency=\"usd\"}  %f\n"+
+				"# HELP current_luna_worth How much commission is worth\n# TYPE current_luna_worth gauge\ncurrent_luna_worth{currency=\"aud\"}  %f\n"+
+				"# HELP voting_power Voting power the validator has\n# TYPE voting_power gauge\nvoting_power %f\n"+
+				"# HELP wallet_balance Current wallet balance\n# TYPE wallet_balance gauge\nwallet_balance{wallet=\"%s\"} %f\n"+
+				"",
+
+			ms.Data.ValidatorTokensAllocated,
+			ms.Data.ValidatorOutstandingCommission,
+			ms.Data.ValidatorOutstandingRewards,
+			ms.Data.ChainID,
+			ms.cursor[0][ms.currentCursor],
+			ms.Data.AverageTransactionsPerBlock,
+			ms.cursor[1][ms.currentCursor],
+			ms.Data.MarketData.MarketData.CurrentPrice.AUD,
+			ms.Data.MarketData.MarketData.CurrentPrice.USD,
+
+			ms.Data.MarketData.MarketData.ATH.AUD,
+			ms.Data.MarketData.MarketData.ATH.USD,
+
+			ms.Data.MarketData.MarketData.ATL.AUD,
+			ms.Data.MarketData.MarketData.ATL.USD,
+
+			ms.Data.MarketData.MarketData.High24.AUD,
+			ms.Data.MarketData.MarketData.High24.USD,
+
+			ms.Data.MarketData.MarketData.Low24.AUD,
+			ms.Data.MarketData.MarketData.Low24.USD,
+
+			ms.Data.LastSignedCount,
+			ms.Data.LastSignedBlockHeight,
+			ms.Data.ValidatorOutstandingCommission*ms.Data.MarketData.MarketData.CurrentPrice.USD,
+			ms.Data.ValidatorOutstandingCommission*ms.Data.MarketData.MarketData.CurrentPrice.AUD,
+
+			ms.Data.ValidatorVotingPower,
+			ms.Data.WalletData.ID,
+			ms.Data.WalletData.Balance,
+		),
+	)
+
+	return stats.String()
 }
 
 func NewMetricStore() *MetricStore {
@@ -266,18 +293,24 @@ func (ms *MetricStore) processUpdate(field UpdateField, value interface{}) {
 		f, _ := strconv.ParseFloat(res.Result.ValidatorInfo.VotingPower, 64)
 		ms.Data.ValidatorVotingPower = f / 1000000
 	case WalletBalances:
-		res := value.(*BalanceResponse)
-		ms.Data.WalletData.ID = res.WalletAddress
+		res := value.([]*BalanceResponse)
 
-		if len(res.Balances) == 0 {
-			// Could do some more cleanup but most likely answer is that the balance of this denom is 0
-			ms.Data.WalletData.Balance = 0
-			ms.Data.WalletData.ID = res.WalletAddress
-			return
+		for _, wallet := range res {
+			var data WalletData
+			data.Address = wallet.WalletAddress
+
+			if len(wallet.Balances) == 0 {
+				// Could do some more cleanup but most likely answer is that the balance of this denom is 0
+				data.Balance = 0
+				data.ID = wallet.WalletAddress
+				return
+			}
+
+			bal, _ := strconv.ParseFloat(wallet.Balances[0].Amount, 64)
+			data.Balance = bal / 1000000
+			ms.Data.WalletData = append(ms.Data.WalletData, data)
 		}
 
-		bal, _ := strconv.ParseFloat(res.Balances[0].Amount, 64)
-		ms.Data.WalletData.Balance = bal / 1000000
 	}
 }
 func (ms *MetricStore) processReset(field UpdateField) {

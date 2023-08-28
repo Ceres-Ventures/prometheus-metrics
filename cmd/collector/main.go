@@ -33,11 +33,11 @@ func main() {
 	metricStore = blockchain.NewMetricStore()
 	metricStore.Start()
 
-	r, err := blockchain.GetLatestBlockData()
+	latestBlockData, err := blockchain.GetLatestBlockData()
 	if err != nil {
 		panic(err.Error())
 	}
-	metricStore.AddUpdate(blockchain.LatestBlockHeight, r)
+	metricStore.AddUpdate(blockchain.LatestBlockHeight, latestBlockData)
 
 	/*
 		s, err := blockchain.GetStatus()
@@ -57,18 +57,18 @@ func main() {
 
 	e.GET("/metrics", getMetrics)
 	latestBlocksJob := func() error {
-		r, e := blockchain.GetLatestBlockData()
+		latestBlockData, e := blockchain.GetLatestBlockData()
 		if e != nil {
 			return e
 		}
 
-		metricStore.AddUpdate(blockchain.LatestBlockHeight, r)
+		metricStore.AddUpdate(blockchain.LatestBlockHeight, latestBlockData)
 
-		b, e := blockchain.GetBalances()
+		balances, e := blockchain.GetBalances()
 		if e != nil {
 			return e
 		}
-		metricStore.AddUpdate(blockchain.WalletBalances, b)
+		metricStore.AddUpdate(blockchain.WalletBalances, balances)
 
 		/*
 			s, err := blockchain.GetStatus()
@@ -108,10 +108,8 @@ func main() {
 	dis.AddJob(marketJob, true, -1, 0)
 
 	delegations := func() error {
-		val, err := validator.GetValidatorData()
-		if err != nil {
-			return err
-		}
+		validators := validator.GetValidatorData()
+
 		valDistr, err := validator.QueryValidatorCommissions()
 		if err != nil {
 			return err
@@ -121,7 +119,7 @@ func main() {
 			return err
 		}
 
-		metricStore.AddUpdate(blockchain.ValidatorTokensAllocated, val.Validator.GetTokens())
+		metricStore.AddUpdate(blockchain.ValidatorTokensAllocated, validators.Validator.GetTokens())
 		metricStore.AddUpdate(blockchain.ValidatorOutstandingCommission, valDistr.GetOutstandingCommission())
 		metricStore.AddUpdate(blockchain.ValidatorOutstandingRewards, valRewards.GetOutstandingRewards())
 		time.Sleep(time.Second * 2)
