@@ -47,15 +47,16 @@ type (
 	}
 
 	WalletData struct {
-		Address string
-		ID      string
-		Balance float64
+		Address string  `json:"address"`
+		ID      string  `json:"ID"`
+		Balance float64 `json:"balance"`
 	}
 
 	ValidatorData struct {
 		AccountAddress        string  `json:"account_address"`
 		HexAddress            string  `json:"hex_address"`
 		OperatorAddress       string  `json:"operator_address"`
+		PublicKey             string  `json:"public_key"`
 		DelegationAmount      float64 `json:"delegation_amount"`
 		CommissionOutstanding float64 `json:"commission_outstanding"`
 		RewardsOutstanding    float64 `json:"rewards_outstanding"`
@@ -78,7 +79,7 @@ type (
 )
 
 func (ms MetricStore) ToPrometheusString() string {
-	stats, market := strings.Builder{}, strings.Builder{}
+	stats, market, validators, wallets := strings.Builder{}, strings.Builder{}, strings.Builder{}, strings.Builder{}
 
 	market.WriteString(
 		fmt.Sprintf(

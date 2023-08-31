@@ -19,6 +19,10 @@ var (
 	metricStore *blockchain.MetricStore
 )
 
+//TODO: Load rpc data for validators from: https://rpc-terra.wildsage.io/validators?height=6581264 <-- Pub key + HEX
+// https://lcd-terra.wildsage.io/cosmos/staking/v1beta1/validators  <-- Pub key + address
+// Create a global validator storage that gets updated all the time
+
 func main() {
 	lvl, err := log.ParseLevel(subenv.Env("LOG_LEVEL", "info"))
 	if err != nil {

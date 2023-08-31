@@ -46,7 +46,11 @@ type (
 	ValidatorResponse struct {
 		Validator Validator `json:"validator"`
 	}
+	ConsensusPubKey struct {
+		Key string `json:"key"`
+	}
 	Validator struct {
+		Consensus         ConsensusPubKey      `json:"consensus_pubkey"`
 		OperatorAddress   string               `json:"operator_address"`
 		Jailed            bool                 `json:"jailed"`
 		Status            string               `json:"status"`
